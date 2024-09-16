@@ -11,11 +11,16 @@ import {
 } from "../generated/templates/Pool/Pool"
 import { Voter } from "../generated/PoolFactory/Voter"
 import { Pool, Token, PoolEvent } from "../generated/schema"
+import { Gauge } from "../generated/templates/Pool/Gauge"
 import { ERC20 } from "../generated/PoolFactory/ERC20"
 import { Pool as PoolTemplate } from "../generated/templates"
 
+  const VOTER_ADDRESS = "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" 
+const SECONDS_PER_YEAR = BigInt.fromI32(31536000)
+  
 export function handlePoolCreated(event: PoolCreated): void {
-    const VOTER_ADDRESS = "0x16613524e02ad97eDfeF371bC883F2F5d6C480A5" 
+
+  
   let pool = new Pool(event.params.pool.toHexString())
   let token0 = Token.load(event.params.token0.toHexString())
   let token1 = Token.load(event.params.token1.toHexString())
@@ -50,16 +55,43 @@ export function handlePoolCreated(event: PoolCreated): void {
   pool.volumeUSD = BigDecimal.fromString("0")
   pool.tvlUSD = BigDecimal.fromString("0")
   pool.createdAt = event.block.timestamp
-    pool.updatedAt = event.block.timestamp
+  pool.updatedAt = event.block.timestamp
+
     
-      // Fetch the gauge address from the Voter contract
+// Fetch the gauge address from the Voter contract
   let voter = Voter.bind(Address.fromString(VOTER_ADDRESS))
   let gaugeAddress = voter.gauges(event.params.pool)
   pool.gaugeAddress = gaugeAddress
+
+  if (gaugeAddress != Address.zero()) {
+    updatePoolAeroEmissions(pool)
+  } else {
+    pool.aeroEmissionsPerSecond = BigDecimal.zero()
+    pool.aeroEmissionsApr = BigDecimal.zero()
+  }
   pool.save()
 
   // Create a new Pool template
   PoolTemplate.create(event.params.pool)
+}
+
+function updatePoolAeroEmissions(pool: Pool): void {
+  let gauge = Gauge.bind(Address.fromBytes(pool.gaugeAddress!))
+  let rewardRate = gauge.rewardRate()
+  
+  pool.aeroEmissionsPerSecond = rewardRate.toBigDecimal()
+  
+  // Calculate APR
+  let aeroEmissionsPerYear = rewardRate.times(SECONDS_PER_YEAR)
+  
+  if (pool.totalSupply.gt(BigDecimal.zero())) {
+    // APR = (emissions per year / total supply) * 100
+    pool.aeroEmissionsApr = aeroEmissionsPerYear.toBigDecimal()
+      .div(pool.totalSupply)
+      .times(BigDecimal.fromString('100'))
+  } else {
+    pool.aeroEmissionsApr = BigDecimal.zero()
+  }
 }
 
 export function handleSwap(event: Swap): void {

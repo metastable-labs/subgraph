@@ -46,6 +46,8 @@ templates:
       abis:
         - name: Pool
           file: ./abis/Pool.json
+        - name: Gauge
+          file: ./abis/Gauge.json
       eventHandlers:
         - event: Swap(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleSwap
