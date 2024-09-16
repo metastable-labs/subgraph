@@ -1,4 +1,4 @@
-type PoolCreated @entity(immutable: true) {
+type Pool @entity {
   id: ID!
   address: Bytes!
   token0: Token!
@@ -21,9 +21,10 @@ type Token @entity {
   name: String!
   decimals: Int!
 }
+
 type PoolEvent @entity {
   id: ID!
-  pool: PoolCreated!
+  pool: Pool!
   eventType: String!
   amount0: BigDecimal!
   amount1: BigDecimal!
