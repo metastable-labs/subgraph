@@ -16,26 +16,38 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - PoolCreated
-        - SetCustomFee
-        - SetFeeManager
-        - SetPauseState
-        - SetPauser
-        - SetVoter
+        - Pool
+        - Token
       abis:
         - name: PoolFactory
           file: ./abis/PoolFactory.json
+        - name: ERC20
+          file: ./abis/ERC20.json
       eventHandlers:
         - event: PoolCreated(indexed address,indexed address,indexed bool,address,uint256)
           handler: handlePoolCreated
-        - event: SetCustomFee(indexed address,uint256)
-          handler: handleSetCustomFee
-        - event: SetFeeManager(address)
-          handler: handleSetFeeManager
-        - event: SetPauseState(bool)
-          handler: handleSetPauseState
-        - event: SetPauser(address)
-          handler: handleSetPauser
-        - event: SetVoter(address)
-          handler: handleSetVoter
-      file: ./src/pool-factory.ts
+      file: ./src/mapping.ts
+templates:
+  - name: Pool
+    kind: ethereum/contract
+    network: base
+    source:
+      abi: Pool
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/mapping.ts
+      entities:
+        - Pool
+        - PoolEvent
+      abis:
+        - name: Pool
+          file: ./abis/Pool.json
+      eventHandlers:
+        - event: Swap(indexed address,indexed address,uint256,uint256,uint256,uint256)
+          handler: handleSwap
+        - event: Mint(indexed address,uint256,uint256)
+          handler: handleMint
+        - event: Burn(indexed address,indexed address,uint256,uint256)
+          handler: handleBurn
