@@ -10,8 +10,8 @@ type Pool @entity {
   volumeUSD: BigDecimal!
   tvlUSD: BigDecimal!
   gaugeAddress: Bytes
-  aeroEmissionsPerSecond: BigDecimal!
-  aeroEmissionsApr: BigDecimal!
+  aeroEmissionsPerSecond: BigDecimal
+  aeroEmissionsApr: BigDecimal
   createdAt: BigInt!
   updatedAt: BigInt!
 }
