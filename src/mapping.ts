@@ -6,6 +6,7 @@ import { Pool, Token, PoolEvent } from '../generated/schema';
 import { Gauge } from '../generated/templates/Pool/Gauge';
 import { ERC20 } from '../generated/PoolFactory/ERC20';
 import { Pool as PoolTemplate } from '../generated/templates';
+import { calculateVolumeUSD, updatePoolTVL } from './price';
 
 const VOTER_ADDRESS = '0x16613524e02ad97eDfeF371bC883F2F5d6C480A5';
 const SECONDS_PER_YEAR = BigInt.fromI32(31536000);
@@ -72,10 +73,12 @@ export function handlePoolCreated(event: PoolCreated): void {
         gaugeAddress.toHexString(),
       ]);
       pool.gaugeAddress = gaugeAddress;
+      updatePoolAeroEmissions(pool);
     }
   }
 
   log.info('Saving pool: {}', [pool.id]);
+  updatePoolTVL(pool);
   pool.save();
 
   log.info('Creating new Pool template for: {}', [event.params.pool.toHexString()]);
@@ -83,38 +86,24 @@ export function handlePoolCreated(event: PoolCreated): void {
 }
 
 function updatePoolAeroEmissions(pool: Pool): void {
-  if (pool.gaugeAddress === null) {
-    pool.aeroEmissionsPerSecond = BigDecimal.zero();
-    pool.aeroEmissionsApr = BigDecimal.zero();
-    return;
-  }
+  let gauge = Gauge.bind(Address.fromBytes(pool.gaugeAddress!));
+  let rewardRate = gauge.rewardRate();
 
-  let gaugeAddress = pool.gaugeAddress as Bytes;
-  let gauge = Gauge.bind(Address.fromBytes(gaugeAddress));
-  let rewardRate = gauge.try_rewardRate();
+  pool.aeroEmissionsPerSecond = rewardRate.toBigDecimal();
 
-  if (rewardRate.reverted) {
-    log.warning('Failed to get reward rate for gauge: {}', [gaugeAddress.toHexString()]);
-    pool.aeroEmissionsPerSecond = BigDecimal.zero();
-    pool.aeroEmissionsApr = BigDecimal.zero();
+  // Calculate APR
+  let aeroEmissionsPerYear = rewardRate.times(SECONDS_PER_YEAR);
+
+  if (pool.totalSupply.gt(BigDecimal.zero())) {
+    // APR = (emissions per year / total supply) * 100
+    pool.aeroEmissionsApr = aeroEmissionsPerYear
+      .toBigDecimal()
+      .div(pool.totalSupply)
+      .times(BigDecimal.fromString('100'));
   } else {
-    pool.aeroEmissionsPerSecond = rewardRate.value.toBigDecimal();
-
-    // Calculate APR
-    let aeroEmissionsPerYear = rewardRate.value.times(SECONDS_PER_YEAR);
-
-    if (pool.totalSupply.gt(BigDecimal.fromString('0'))) {
-      // APR = (emissions per year / total supply) * 100
-      pool.aeroEmissionsApr = aeroEmissionsPerYear
-        .toBigDecimal()
-        .div(pool.totalSupply)
-        .times(BigDecimal.fromString('100'));
-    } else {
-      pool.aeroEmissionsApr = BigDecimal.zero();
-    }
+    pool.aeroEmissionsApr = BigDecimal.zero();
   }
 }
-
 export function handleMint(event: Mint): void {
   let poolAddress = event.address.toHexString();
   let pool = Pool.load(poolAddress);
@@ -137,9 +126,18 @@ export function handleMint(event: Mint): void {
     pool.totalSupply = totalSupplyResult.value.toBigDecimal();
   }
 
+  // Update TVL and token prices
+  updatePoolTVL(pool);
+
   pool.updatedAt = event.block.timestamp;
 
   updatePoolGauge(pool);
+  // Only update emissions if gauge address is not null
+  if (pool.gaugeAddress !== null) {
+    updatePoolAeroEmissions(pool);
+  } else {
+    log.info('No gauge for pool: {}. Skipping emissions update.', [poolAddress]);
+  }
   pool.save();
 
   // Create deposit event
@@ -168,26 +166,34 @@ export function handleSwap(event: Swap): void {
   let amount0Out = event.params.amount0Out;
   let amount1Out = event.params.amount1Out;
 
-  // Calculate the volume in terms of token0
-  let volume = amount0In.plus(amount0Out);
+  // Update reserves
+  pool.reserveToken0 = pool.reserveToken0
+    .plus(amount0In.toBigDecimal())
+    .minus(amount0Out.toBigDecimal());
+  pool.reserveToken1 = pool.reserveToken1
+    .plus(amount1In.toBigDecimal())
+    .minus(amount1Out.toBigDecimal());
 
-  // Update pool stats
-  pool.volumeUSD = pool.volumeUSD.plus(volume.toBigDecimal());
+  // Update TVL and token prices
+  updatePoolTVL(pool);
 
-  // Update reserves by querying the contract
-  let poolContract = PoolContract.bind(event.address);
-  let reservesResult = poolContract.try_getReserves();
-
-  if (reservesResult.reverted) {
-    log.warning('Failed to get reserves for pool: {}', [poolAddress]);
-  } else {
-    pool.reserveToken0 = reservesResult.value.value0.toBigDecimal();
-    pool.reserveToken1 = reservesResult.value.value1.toBigDecimal();
-  }
+  // Calculate and update volume
+  let volumeUSD = calculateVolumeUSD(
+    pool,
+    amount0In.plus(amount0Out).toBigDecimal(),
+    amount1In.plus(amount1Out).toBigDecimal(),
+  );
+  pool.volumeUSD = pool.volumeUSD.plus(volumeUSD);
 
   pool.updatedAt = event.block.timestamp;
 
   updatePoolGauge(pool);
+  // Only update emissions if gauge address is not null
+  if (pool.gaugeAddress !== null) {
+    updatePoolAeroEmissions(pool);
+  } else {
+    log.info('No gauge for pool: {}. Skipping emissions update.', [poolAddress]);
+  }
   pool.save();
 
   // Create swap event
@@ -238,9 +244,18 @@ export function handleBurn(event: Burn): void {
     pool.totalSupply = totalSupplyResult.value.toBigDecimal();
   }
 
+  // Update TVL and token prices
+  updatePoolTVL(pool);
+
   pool.updatedAt = event.block.timestamp;
 
   updatePoolGauge(pool);
+  // Only update emissions if gauge address is not null
+  if (pool.gaugeAddress !== null) {
+    updatePoolAeroEmissions(pool);
+  } else {
+    log.info('No gauge for pool: {}. Skipping emissions update.', [poolAddress]);
+  }
   pool.save();
 
   // Create withdraw event
@@ -266,6 +281,5 @@ function updatePoolGauge(pool: Pool): void {
     pool.gaugeAddress = null;
   } else {
     pool.gaugeAddress = gaugeAddress.value;
-    updatePoolAeroEmissions(pool);
   }
 }
