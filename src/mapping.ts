@@ -44,6 +44,7 @@ export function handlePoolCreated(event: PoolCreated): void {
   pool.reserve0 = BigInt.fromI32(0);
   pool.reserve1 = BigInt.fromI32(0);
   pool.totalSupply = BigInt.fromI32(0);
+  pool.liquidity = BigInt.fromI32(0);
   pool.createdAt = event.block.timestamp;
   pool.updatedAt = event.block.timestamp;
 
