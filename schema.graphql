@@ -4,16 +4,15 @@ type Pool @entity {
   token0: Token!
   token1: Token!
   isStable: Boolean!
-  reserveToken0: BigDecimal!
-  reserveToken1: BigDecimal!
-  totalSupply: BigDecimal!
-  volumeUSD: BigDecimal!
-  tvlUSD: BigDecimal!
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
   gaugeAddress: Bytes
-  aeroEmissionsPerSecond: BigDecimal
-  aeroEmissionsApr: BigDecimal
+  liquidity: BigInt!
   createdAt: BigInt!
   updatedAt: BigInt!
+  aeroEmissionsPerSecond: BigInt
+  aeroEmissionsApr: BigInt
 }
 
 type Token @entity {
@@ -22,15 +21,14 @@ type Token @entity {
   symbol: String!
   name: String!
   decimals: Int!
-  priceUSD: BigDecimal
+  pools: [Pool!]! @derivedFrom(field: "token0")
 }
 
 type PoolEvent @entity {
   id: ID!
   pool: Pool!
   eventType: String!
-  amount0: BigDecimal!
-  amount1: BigDecimal!
+  amount0: BigInt!
+  amount1: BigInt!
   timestamp: BigInt!
-  amountUSD: BigDecimal
 }

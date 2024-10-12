@@ -41,7 +41,7 @@ templates:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
-      file: ./src/mapping.ts
+      file: ./src/pool.ts
       entities:
         - Pool
         - PoolEvent
