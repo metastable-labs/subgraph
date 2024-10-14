@@ -17,6 +17,7 @@ export function handlePoolCreated(event: PoolCreated): void {
     token0.name = erc20.name();
     token0.decimals = erc20.decimals();
     token0.totalSupply = ZERO_BI;
+    token0.tradeVolume = ZERO_BD;
     token0.txCount = ZERO_BI;
     token0.totalLiquidity = ZERO_BD;
     token0.derivedETH = ZERO_BD;
@@ -30,6 +31,7 @@ export function handlePoolCreated(event: PoolCreated): void {
     token1.name = erc20.name();
     token1.decimals = erc20.decimals();
     token1.totalSupply = ZERO_BI;
+    token1.tradeVolume = ZERO_BD;
     token1.txCount = ZERO_BI;
     token1.totalLiquidity = ZERO_BD;
     token1.derivedETH = ZERO_BD;
