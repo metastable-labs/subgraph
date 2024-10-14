@@ -22,10 +22,11 @@ type Token @entity {
   # mirrored from the smart contract
   symbol: String!
   name: String!
-  decimals: BigInt!
+  decimals: Int!
 
   # used for other stats like marketcap
   totalSupply: BigInt!
+  
 
   # token specific volume
   tradeVolume: BigDecimal!
@@ -36,6 +37,9 @@ type Token @entity {
 
   # liquidity across all pools
   totalLiquidity: BigDecimal!
+
+  # derived prices
+  derivedETH: BigDecimal!
 
   # derived fields
   tokenDayData: [TokenDayData!]! @derivedFrom(field: "token")
@@ -55,6 +59,7 @@ type Pool @entity {
   reserve0: BigDecimal!
   reserve1: BigDecimal!
   totalSupply: BigDecimal!
+  isStable: Boolean!
 
   # derived liquidity
   reserveETH: BigDecimal!
