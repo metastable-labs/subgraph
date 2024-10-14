@@ -82,7 +82,7 @@ type Pool @entity {
   createdAtBlockNumber: BigInt!
 
   # Fields used to help derived relationship
-  liquidityProviderCount: BigInt! # used to detect new exchanges
+  
   # derived fields
   poolHourData: [PoolHourData!]! @derivedFrom(field: "pool")
   mints: [Mint!]! @derivedFrom(field: "pool")
