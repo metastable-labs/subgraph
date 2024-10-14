@@ -50,6 +50,8 @@ templates:
           file: ./abis/ERC20.json
         - name: PoolFactory
           file: ./abis/PoolFactory.json
+        - name: OffchainOracle
+          file: ./abis/OffchainOracle.json
       eventHandlers:
         - event: Swap(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleSwap
