@@ -53,6 +53,11 @@ export function handlePoolCreated(event: PoolCreated): void {
   pool.volumeToken0 = ZERO_BD;
   pool.volumeToken1 = ZERO_BD;
   pool.volumeUSD = ZERO_BD;
+  pool.reserve0 = ZERO_BD;
+  pool.reserve1 = ZERO_BD;
+  pool.reserveETH = ZERO_BD;
+  pool.reserveUSD = ZERO_BD;
+  pool.trackedReserveETH = ZERO_BD;
   pool.save();
 
   token0.save();
