@@ -23,14 +23,10 @@ dataSources:
           file: ./abis/ERC20.json
         - name: Pool
           file: ./abis/Pool.json
-        - name: Voter
-          file: ./abis/Voter.json
-        - name: Gauge
-          file: ./abis/Gauge.json
       eventHandlers:
         - event: PoolCreated(indexed address,indexed address,indexed bool,address,uint256)
           handler: handlePoolCreated
-      file: ./src/mapping.ts
+      file: ./src/mappings/factory.ts
 templates:
   - name: Pool
     kind: ethereum/contract
@@ -41,19 +37,17 @@ templates:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
-      file: ./src/pool.ts
+      file: ./src/mappings/pool.ts
       entities:
         - Pool
-        - PoolEvent
+        - Token
       abis:
         - name: Pool
           file: ./abis/Pool.json
         - name: ERC20
           file: ./abis/ERC20.json
-        - name: Voter
-          file: ./abis/Voter.json
-        - name: Gauge
-          file: ./abis/Gauge.json
+        - name: PoolFactory
+          file: ./abis/PoolFactory.json
       eventHandlers:
         - event: Swap(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleSwap
