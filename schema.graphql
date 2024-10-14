@@ -115,7 +115,6 @@ type Mint @entity {
 
   # populated from the primary Transfer event
   to: Bytes!
-  liquidity: BigDecimal!
 
   # populated from the Mint event
   sender: Bytes
@@ -134,8 +133,6 @@ type Burn @entity {
   timestamp: BigInt! # need this to pull recent txns for specific token or pool
   pool: Pool!
 
-  # populated from the primary Transfer event
-  liquidity: BigDecimal!
 
   # populated from the Burn event
   sender: Bytes
@@ -184,7 +181,6 @@ type AerodromeDayData @entity {
   dailyVolumeUSD: BigDecimal!
 
   totalVolumeETH: BigDecimal!
-  totalLiquidityETH: BigDecimal!
   totalVolumeUSD: BigDecimal! # Accumulate at each trade, not just calculated off whatever totalVolume is. making it more accurate as it is a live conversion
   totalLiquidityUSD: BigDecimal!
 
@@ -251,7 +247,6 @@ type TokenDayData @entity {
 
   # liquidity stats
   totalLiquidityToken: BigDecimal!
-  totalLiquidityETH: BigDecimal!
   totalLiquidityUSD: BigDecimal!
 
   # price stats

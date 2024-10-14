@@ -23,11 +23,12 @@ export function updateAerodromeDayData(event: ethereum.Event): AerodromeDayData 
     aerodromeDayData.dailyVolumeETH = ZERO_BD;
     aerodromeDayData.totalVolumeUSD = ZERO_BD;
     aerodromeDayData.totalVolumeETH = ZERO_BD;
+    aerodromeDayData.totalLiquidityUSD = ZERO_BD;
+    aerodromeDayData.txCount = ZERO_BI;
   }
 
   if (aerodrome) {
     aerodromeDayData.totalLiquidityUSD = aerodrome.totalLiquidityUSD;
-    aerodromeDayData.totalLiquidityETH = aerodrome.totalLiquidityUSD; // Changed from totalLiquidityETH to totalLiquidityUSD
     aerodromeDayData.txCount = aerodrome.txCount;
   }
   aerodromeDayData.save();
@@ -123,8 +124,7 @@ export function updateTokenDayData(token: Token, event: ethereum.Event): TokenDa
   }
   tokenDayData.priceUSD = token.derivedETH.times(token.derivedETH);
   tokenDayData.totalLiquidityToken = token.totalLiquidity;
-  tokenDayData.totalLiquidityETH = token.totalLiquidity.times(token.derivedETH);
-  tokenDayData.totalLiquidityUSD = tokenDayData.totalLiquidityETH.times(token.derivedETH);
+  tokenDayData.totalLiquidityUSD = tokenDayData.totalLiquidityToken.times(tokenDayData.priceUSD);
   tokenDayData.dailyTxns = tokenDayData.dailyTxns.plus(ONE_BI);
   tokenDayData.save();
 
