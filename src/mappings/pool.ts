@@ -188,7 +188,7 @@ export function handleMint(event: Mint): void {
   let poolContract = ERC20.bind(event.address);
   let totalSupplyResult = poolContract.try_totalSupply();
   if (!totalSupplyResult.reverted) {
-    pool.totalSupply = formatTokenAmount(totalSupplyResult.value, 18); // LP tokens always have 18 decimals
+    pool.totalSupply = formatTokenAmount(totalSupplyResult.value, 18);
   }
 
   // Save updates
@@ -218,6 +218,7 @@ export function handleMint(event: Mint): void {
   mint.pool = pool.id;
   mint.timestamp = transaction.timestamp;
   mint.sender = event.params.sender;
+  mint.to = event.params.sender; // In Aerodrome, sender is the recipient of the minted tokens
   mint.amount0 = amount0;
   mint.amount1 = amount1;
   mint.logIndex = event.logIndex;
