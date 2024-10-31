@@ -53,6 +53,8 @@ templates:
         - name: OffchainOracle
           file: ./abis/OffchainOracle.json
       eventHandlers:
+        - event: Sync(uint256,uint256)
+          handler: handleSync
         - event: Swap(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleSwap
         - event: Mint(indexed address,uint256,uint256)
