@@ -1,16 +1,23 @@
-import { BigInt } from '@graphprotocol/graph-ts';
+import { BigInt, BigDecimal } from '@graphprotocol/graph-ts';
 import { PoolCreated } from '../../generated/PoolFactory/PoolFactory';
-import { Pool, Token } from '../../generated/schema';
+import { Pool, Token, AerodromeFactory } from '../../generated/schema';
 import { Pool as PoolTemplate } from '../../generated/templates';
-import { ZERO_BD, ZERO_BI } from './helpers';
 import { ERC20 } from '../../generated/PoolFactory/ERC20';
-import { AerodromeFactory } from '../../generated/schema';
+import { FACTORY_ADDRESS } from './constants';
+
+const ZERO_BD = BigDecimal.fromString('0');
+const ZERO_BI = BigInt.fromI32(0);
+
+function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
+  let scale = BigInt.fromI32(10).pow(u8(decimals)).toBigDecimal();
+  return amount.toBigDecimal().div(scale);
+}
 
 export function handlePoolCreated(event: PoolCreated): void {
   // Load or create factory
-  let factory = AerodromeFactory.load(event.address.toHexString());
+  let factory = AerodromeFactory.load(FACTORY_ADDRESS);
   if (factory === null) {
-    factory = new AerodromeFactory(event.address.toHexString());
+    factory = new AerodromeFactory(FACTORY_ADDRESS);
     factory.poolCount = 0;
     factory.txCount = ZERO_BI;
   }
@@ -22,12 +29,17 @@ export function handlePoolCreated(event: PoolCreated): void {
   let token1 = Token.load(event.params.token1.toHexString());
 
   if (token0 === null) {
-    let erc20 = ERC20.bind(event.params.token0);
+    let token0Contract = ERC20.bind(event.params.token0);
+    let decimals = token0Contract.decimals();
+
     token0 = new Token(event.params.token0.toHexString());
-    token0.symbol = erc20.symbol();
-    token0.name = erc20.name();
-    token0.decimals = erc20.decimals();
-    token0.totalSupply = erc20.totalSupply();
+    token0.symbol = token0Contract.symbol();
+    token0.name = token0Contract.name();
+    token0.decimals = decimals;
+
+    // Format total supply using decimals
+    let totalSupply = token0Contract.totalSupply();
+    token0.totalSupply = totalSupply;
     token0.tradeVolume = ZERO_BD;
     token0.txCount = ZERO_BI;
     token0.totalLiquidity = ZERO_BD;
@@ -35,19 +47,24 @@ export function handlePoolCreated(event: PoolCreated): void {
   }
 
   if (token1 === null) {
-    let erc20 = ERC20.bind(event.params.token1);
+    let token1Contract = ERC20.bind(event.params.token1);
+    let decimals = token1Contract.decimals();
+
     token1 = new Token(event.params.token1.toHexString());
-    token1.symbol = erc20.symbol();
-    token1.name = erc20.name();
-    token1.decimals = erc20.decimals();
-    token1.totalSupply = erc20.totalSupply();
+    token1.symbol = token1Contract.symbol();
+    token1.name = token1Contract.name();
+    token1.decimals = decimals;
+
+    // Format total supply using decimals
+    let totalSupply = token1Contract.totalSupply();
+    token1.totalSupply = totalSupply;
     token1.tradeVolume = ZERO_BD;
     token1.txCount = ZERO_BI;
     token1.totalLiquidity = ZERO_BD;
     token1.save();
   }
 
-  // Create the pool
+  // Create new pool
   let pool = new Pool(event.params.pool.toHexString());
   pool.token0 = token0.id;
   pool.token1 = token1.id;

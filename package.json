@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.82.0",
-    "@graphprotocol/graph-ts": "0.32.0"
+    "@graphprotocol/graph-ts": "0.32.0",
+    "viem": "^2.21.37"
   },
   "devDependencies": {
     "matchstick-as": "0.5.0",

@@ -1,4 +1,4 @@
-import { BigInt } from '@graphprotocol/graph-ts';
+import { BigInt, BigDecimal } from '@graphprotocol/graph-ts';
 import { Swap, Mint, Burn } from '../../generated/templates/Pool/Pool';
 import {
   Pool,
@@ -9,15 +9,20 @@ import {
   Swap as SwapEvent,
   AerodromeFactory,
 } from '../../generated/schema';
-import { ZERO_BD, ONE_BI, FACTORY_ADDRESS, convertTokenToDecimal } from './helpers';
+import { PoolFactory } from '../../generated/PoolFactory/PoolFactory';
+import { ERC20 } from '../../generated/PoolFactory/ERC20';
+import { FACTORY_ADDRESS, ZERO_BI, ONE_BI, ZERO_BD } from './constants';
 import {
   updateAerodromeDayData,
   updatePoolDayData,
   updatePoolHourData,
   updateTokenDayData,
 } from './dayUpdates';
-import { PoolFactory } from '../../generated/PoolFactory/PoolFactory';
-import { ERC20 } from '../../generated/PoolFactory/ERC20';
+
+function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
+  let scale = BigInt.fromI32(10).pow(u8(decimals)).toBigDecimal();
+  return amount.toBigDecimal().div(scale);
+}
 
 export function handleSwap(event: Swap): void {
   let pool = Pool.load(event.address.toHexString());
@@ -27,38 +32,39 @@ export function handleSwap(event: Swap): void {
   let token1 = Token.load(pool.token1);
   if (token0 === null || token1 === null) return;
 
-  let amount0In = convertTokenToDecimal(event.params.amount0In, BigInt.fromI32(token0.decimals));
-  let amount1In = convertTokenToDecimal(event.params.amount1In, BigInt.fromI32(token1.decimals));
-  let amount0Out = convertTokenToDecimal(event.params.amount0Out, BigInt.fromI32(token0.decimals));
-  let amount1Out = convertTokenToDecimal(event.params.amount1Out, BigInt.fromI32(token1.decimals));
+  // Format amounts using token decimals
+  let amount0In = formatTokenAmount(event.params.amount0In, token0.decimals);
+  let amount1In = formatTokenAmount(event.params.amount1In, token1.decimals);
+  let amount0Out = formatTokenAmount(event.params.amount0Out, token0.decimals);
+  let amount1Out = formatTokenAmount(event.params.amount1Out, token1.decimals);
 
   let amount0Total = amount0In.plus(amount0Out);
   let amount1Total = amount1In.plus(amount1Out);
 
-  // Update token stats
+  // Token updates
   token0.tradeVolume = token0.tradeVolume.plus(amount0Total);
-  token0.txCount = token0.txCount.plus(ONE_BI);
-
   token1.tradeVolume = token1.tradeVolume.plus(amount1Total);
+  token0.txCount = token0.txCount.plus(ONE_BI);
   token1.txCount = token1.txCount.plus(ONE_BI);
 
-  // Update pool stats
+  // Pool updates
   pool.volumeToken0 = pool.volumeToken0.plus(amount0Total);
   pool.volumeToken1 = pool.volumeToken1.plus(amount1Total);
   pool.txCount = pool.txCount.plus(ONE_BI);
 
+  // Save entities
   pool.save();
   token0.save();
   token1.save();
 
-  // Update factory stats
-  let aerodrome = AerodromeFactory.load(FACTORY_ADDRESS);
-  if (aerodrome !== null) {
-    aerodrome.txCount = aerodrome.txCount.plus(ONE_BI);
-    aerodrome.save();
+  // Factory updates
+  let factory = AerodromeFactory.load(FACTORY_ADDRESS);
+  if (factory !== null) {
+    factory.txCount = factory.txCount.plus(ONE_BI);
+    factory.save();
   }
 
-  // Create transaction entity
+  // Transaction tracking
   let transaction = Transaction.load(event.transaction.hash.toHexString());
   if (transaction === null) {
     transaction = new Transaction(event.transaction.hash.toHexString());
@@ -72,9 +78,13 @@ export function handleSwap(event: Swap): void {
   // Create swap event
   let swaps = transaction.swaps;
   let swap = new SwapEvent(
-    event.transaction.hash.toHexString() + '-' + BigInt.fromI32(swaps.length).toString(),
+    event.transaction.hash
+      .toHexString()
+      .concat('-')
+      .concat(BigInt.fromI32(swaps.length).toString()),
   );
 
+  // Populate swap event
   swap.transaction = transaction.id;
   swap.pool = pool.id;
   swap.timestamp = transaction.timestamp;
@@ -86,18 +96,20 @@ export function handleSwap(event: Swap): void {
   swap.amount1Out = amount1Out;
   swap.to = event.params.to;
   swap.logIndex = event.logIndex;
-  swap.save();
 
+  // Save swap and update transaction
+  swap.save();
   swaps.push(swap.id);
   transaction.swaps = swaps;
   transaction.save();
 
-  // Update day and hour data
+  // Update aggregated stats
   let poolDayData = updatePoolDayData(event);
   let poolHourData = updatePoolHourData(event);
   let token0DayData = updateTokenDayData(token0, event);
   let token1DayData = updateTokenDayData(token1, event);
 
+  // Update volumes
   poolDayData.dailyVolumeToken0 = poolDayData.dailyVolumeToken0.plus(amount0Total);
   poolDayData.dailyVolumeToken1 = poolDayData.dailyVolumeToken1.plus(amount1Total);
   poolDayData.save();
@@ -114,23 +126,24 @@ export function handleSwap(event: Swap): void {
 
 export function handleMint(event: Mint): void {
   let pool = Pool.load(event.address.toHexString());
-  let poolContract = PoolFactory.bind(event.address);
   if (pool === null) return;
 
   let token0 = Token.load(pool.token0);
   let token1 = Token.load(pool.token1);
   if (token0 === null || token1 === null) return;
 
-  let amount0 = convertTokenToDecimal(event.params.amount0, BigInt.fromI32(token0.decimals));
-  let amount1 = convertTokenToDecimal(event.params.amount1, BigInt.fromI32(token1.decimals));
+  // Format amounts
+  let amount0 = formatTokenAmount(event.params.amount0, token0.decimals);
+  let amount1 = formatTokenAmount(event.params.amount1, token1.decimals);
 
   // Update pool liquidity
   let liquidityToken = ERC20.bind(event.address);
   let totalSupplyResult = liquidityToken.try_totalSupply();
   if (!totalSupplyResult.reverted) {
-    pool.totalSupply = convertTokenToDecimal(totalSupplyResult.value, BigInt.fromI32(18));
+    pool.totalSupply = formatTokenAmount(totalSupplyResult.value, 18);
   }
 
+  // Update reserves
   pool.reserve0 = pool.reserve0.plus(amount0);
   pool.reserve1 = pool.reserve1.plus(amount1);
   pool.save();
@@ -141,7 +154,7 @@ export function handleMint(event: Mint): void {
   token0.save();
   token1.save();
 
-  // Create mint event
+  // Transaction tracking
   let transaction = Transaction.load(event.transaction.hash.toHexString());
   if (transaction === null) {
     transaction = new Transaction(event.transaction.hash.toHexString());
@@ -152,11 +165,16 @@ export function handleMint(event: Mint): void {
     transaction.burns = [];
   }
 
+  // Create mint event
   let mints = transaction.mints;
   let mint = new MintEvent(
-    event.transaction.hash.toHexString() + '-' + BigInt.fromI32(mints.length).toString(),
+    event.transaction.hash
+      .toHexString()
+      .concat('-')
+      .concat(BigInt.fromI32(mints.length).toString()),
   );
 
+  // Populate mint event
   mint.transaction = transaction.id;
   mint.pool = pool.id;
   mint.timestamp = transaction.timestamp;
@@ -165,13 +183,14 @@ export function handleMint(event: Mint): void {
   mint.amount0 = amount0;
   mint.amount1 = amount1;
   mint.logIndex = event.logIndex;
-  mint.save();
 
+  // Save mint and update transaction
+  mint.save();
   mints.push(mint.id);
   transaction.mints = mints;
   transaction.save();
 
-  // Update aggregated data
+  // Update aggregated stats
   updatePoolDayData(event);
   updatePoolHourData(event);
   updateTokenDayData(token0, event);
@@ -186,16 +205,18 @@ export function handleBurn(event: Burn): void {
   let token1 = Token.load(pool.token1);
   if (token0 === null || token1 === null) return;
 
-  let amount0 = convertTokenToDecimal(event.params.amount0, BigInt.fromI32(token0.decimals));
-  let amount1 = convertTokenToDecimal(event.params.amount1, BigInt.fromI32(token1.decimals));
+  // Format amounts
+  let amount0 = formatTokenAmount(event.params.amount0, token0.decimals);
+  let amount1 = formatTokenAmount(event.params.amount1, token1.decimals);
 
   // Update pool liquidity
   let liquidityToken = ERC20.bind(event.address);
   let totalSupplyResult = liquidityToken.try_totalSupply();
   if (!totalSupplyResult.reverted) {
-    pool.totalSupply = convertTokenToDecimal(totalSupplyResult.value, BigInt.fromI32(18));
+    pool.totalSupply = formatTokenAmount(totalSupplyResult.value, 18);
   }
 
+  // Update reserves
   pool.reserve0 = pool.reserve0.minus(amount0);
   pool.reserve1 = pool.reserve1.minus(amount1);
   pool.save();
@@ -206,7 +227,7 @@ export function handleBurn(event: Burn): void {
   token0.save();
   token1.save();
 
-  // Create burn event
+  // Transaction tracking
   let transaction = Transaction.load(event.transaction.hash.toHexString());
   if (transaction === null) {
     transaction = new Transaction(event.transaction.hash.toHexString());
@@ -217,11 +238,16 @@ export function handleBurn(event: Burn): void {
     transaction.burns = [];
   }
 
+  // Create burn event
   let burns = transaction.burns;
   let burn = new BurnEvent(
-    event.transaction.hash.toHexString() + '-' + BigInt.fromI32(burns.length).toString(),
+    event.transaction.hash
+      .toHexString()
+      .concat('-')
+      .concat(BigInt.fromI32(burns.length).toString()),
   );
 
+  // Populate burn event
   burn.transaction = transaction.id;
   burn.pool = pool.id;
   burn.timestamp = transaction.timestamp;
@@ -230,13 +256,14 @@ export function handleBurn(event: Burn): void {
   burn.amount0 = amount0;
   burn.amount1 = amount1;
   burn.logIndex = event.logIndex;
-  burn.save();
 
+  // Save burn and update transaction
+  burn.save();
   burns.push(burn.id);
   transaction.burns = burns;
   transaction.save();
 
-  // Update aggregated data
+  // Update aggregated stats
   updatePoolDayData(event);
   updatePoolHourData(event);
   updateTokenDayData(token0, event);
