@@ -13,27 +13,24 @@ import { FACTORY_ADDRESS, ZERO_BD, ZERO_BI, ONE_BI } from './helpers';
 export function updateAerodromeDayData(event: ethereum.Event): AerodromeDayData {
   let aerodrome = AerodromeFactory.load(FACTORY_ADDRESS);
   let timestamp = event.block.timestamp.toI32();
-  let dayID = timestamp / 86400;
+  let dayID = timestamp / 86400; // 86400 seconds in a day
   let dayStartTimestamp = dayID * 86400;
-  let aerodromeDayData = AerodromeDayData.load(dayID.toString());
-  if (aerodromeDayData === null) {
-    aerodromeDayData = new AerodromeDayData(dayID.toString());
-    aerodromeDayData.date = dayStartTimestamp;
-    aerodromeDayData.dailyVolumeUSD = ZERO_BD;
-    aerodromeDayData.dailyVolumeETH = ZERO_BD;
-    aerodromeDayData.totalVolumeUSD = ZERO_BD;
-    aerodromeDayData.totalVolumeETH = ZERO_BD;
-    aerodromeDayData.totalLiquidityUSD = ZERO_BD;
-    aerodromeDayData.txCount = ZERO_BI;
+
+  let dayData = AerodromeDayData.load(dayID.toString());
+  if (dayData === null) {
+    dayData = new AerodromeDayData(dayID.toString());
+    dayData.date = dayStartTimestamp;
+    dayData.dailyVolumeToken0 = ZERO_BD;
+    dayData.dailyVolumeToken1 = ZERO_BD;
+    dayData.txCount = ZERO_BI;
   }
 
   if (aerodrome) {
-    aerodromeDayData.totalLiquidityUSD = aerodrome.totalLiquidityUSD;
-    aerodromeDayData.txCount = aerodrome.txCount;
+    dayData.txCount = aerodrome.txCount;
   }
-  aerodromeDayData.save();
+  dayData.save();
 
-  return aerodromeDayData as AerodromeDayData;
+  return dayData;
 }
 
 export function updatePoolDayData(event: ethereum.Event): PoolDayData {
@@ -41,8 +38,10 @@ export function updatePoolDayData(event: ethereum.Event): PoolDayData {
   let dayID = timestamp / 86400;
   let dayStartTimestamp = dayID * 86400;
   let dayPoolID = event.address.toHexString().concat('-').concat(dayID.toString());
+
   let pool = Pool.load(event.address.toHexString());
   let poolDayData = PoolDayData.load(dayPoolID);
+
   if (poolDayData === null) {
     poolDayData = new PoolDayData(dayPoolID);
     poolDayData.date = dayStartTimestamp;
@@ -52,32 +51,34 @@ export function updatePoolDayData(event: ethereum.Event): PoolDayData {
     poolDayData.reserve0 = ZERO_BD;
     poolDayData.reserve1 = ZERO_BD;
     poolDayData.totalSupply = ZERO_BD;
-    poolDayData.reserveUSD = ZERO_BD;
     poolDayData.dailyVolumeToken0 = ZERO_BD;
     poolDayData.dailyVolumeToken1 = ZERO_BD;
-    poolDayData.dailyVolumeUSD = ZERO_BD;
     poolDayData.dailyTxns = ZERO_BI;
   }
 
   if (pool) {
+    // Update reserves and supply
     poolDayData.reserve0 = pool.reserve0;
     poolDayData.reserve1 = pool.reserve1;
     poolDayData.totalSupply = pool.totalSupply;
-    poolDayData.reserveUSD = pool.reserveUSD;
   }
+
+  // Increment transaction count
   poolDayData.dailyTxns = poolDayData.dailyTxns.plus(ONE_BI);
   poolDayData.save();
 
-  return poolDayData as PoolDayData;
+  return poolDayData;
 }
 
 export function updatePoolHourData(event: ethereum.Event): PoolHourData {
   let timestamp = event.block.timestamp.toI32();
-  let hourIndex = timestamp / 3600; // get unique hour within unix history
-  let hourStartUnix = hourIndex * 3600; // want the rounded effect
+  let hourIndex = timestamp / 3600; // 3600 seconds in an hour
+  let hourStartUnix = hourIndex * 3600;
   let hourPoolID = event.address.toHexString().concat('-').concat(hourIndex.toString());
+
   let pool = Pool.load(event.address.toHexString());
   let poolHourData = PoolHourData.load(hourPoolID);
+
   if (poolHourData === null) {
     poolHourData = new PoolHourData(hourPoolID);
     poolHourData.hourStartUnix = hourStartUnix;
@@ -85,23 +86,23 @@ export function updatePoolHourData(event: ethereum.Event): PoolHourData {
     poolHourData.reserve0 = ZERO_BD;
     poolHourData.reserve1 = ZERO_BD;
     poolHourData.totalSupply = ZERO_BD;
-    poolHourData.reserveUSD = ZERO_BD;
     poolHourData.hourlyVolumeToken0 = ZERO_BD;
     poolHourData.hourlyVolumeToken1 = ZERO_BD;
-    poolHourData.hourlyVolumeUSD = ZERO_BD;
     poolHourData.hourlyTxns = ZERO_BI;
   }
 
   if (pool) {
+    // Update reserves and supply
     poolHourData.reserve0 = pool.reserve0;
     poolHourData.reserve1 = pool.reserve1;
     poolHourData.totalSupply = pool.totalSupply;
-    poolHourData.reserveUSD = pool.reserveUSD;
   }
+
+  // Increment transaction count
   poolHourData.hourlyTxns = poolHourData.hourlyTxns.plus(ONE_BI);
   poolHourData.save();
 
-  return poolHourData as PoolHourData;
+  return poolHourData;
 }
 
 export function updateTokenDayData(token: Token, event: ethereum.Event): TokenDayData {
@@ -115,18 +116,15 @@ export function updateTokenDayData(token: Token, event: ethereum.Event): TokenDa
     tokenDayData = new TokenDayData(tokenDayID);
     tokenDayData.date = dayStartTimestamp;
     tokenDayData.token = token.id;
-    tokenDayData.priceUSD = token.derivedETH.times(token.derivedETH);
     tokenDayData.dailyVolumeToken = ZERO_BD;
-    tokenDayData.dailyVolumeETH = ZERO_BD;
-    tokenDayData.dailyVolumeUSD = ZERO_BD;
     tokenDayData.dailyTxns = ZERO_BI;
-    tokenDayData.totalLiquidityUSD = ZERO_BD;
+    tokenDayData.totalLiquidity = ZERO_BD;
   }
-  tokenDayData.priceUSD = token.derivedETH.times(token.derivedETH);
-  tokenDayData.totalLiquidityToken = token.totalLiquidity;
-  tokenDayData.totalLiquidityUSD = tokenDayData.totalLiquidityToken.times(tokenDayData.priceUSD);
+
+  // Update liquidity and transaction count
+  tokenDayData.totalLiquidity = token.totalLiquidity;
   tokenDayData.dailyTxns = tokenDayData.dailyTxns.plus(ONE_BI);
   tokenDayData.save();
 
-  return tokenDayData as TokenDayData;
+  return tokenDayData;
 }
