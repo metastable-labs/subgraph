@@ -40,7 +40,11 @@ type Pool @entity {
   emissionsPerSecond: BigDecimal!
   emissionsToken: Bytes! # Address of emissions token
   yearlyEmissions: BigDecimal! # APR in percentage
-  
+
+    # Fees earned data
+  claimableToken0: BigDecimal!
+  claimableToken1: BigDecimal!
+
   createdAtTimestamp: BigInt!
   createdAtBlockNumber: BigInt!
   poolHourData: [PoolHourData!]! @derivedFrom(field: "pool")

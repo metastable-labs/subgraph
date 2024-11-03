@@ -90,6 +90,8 @@ export function handlePoolCreated(event: PoolCreated): void {
   pool.yearlyEmissions = ZERO_BD;
   pool.emissionsToken = Address.fromString('0x940181a94A35A4569e4529A3CDfB74e38FD98631'); // AERO token
 
+  pool.claimableToken0 = ZERO_BD;
+  pool.claimableToken1 = ZERO_BD;
   pool.save();
 
   // Create the tracked contract based on the template

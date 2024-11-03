@@ -19,6 +19,7 @@ import {
 import { ERC20 } from '../../generated/PoolFactory/ERC20';
 import { updateTokenPrices } from './pricing';
 import { updatePoolEmissions } from './emissions';
+import { updatePoolFees } from './fees';
 
 function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
   let scale = BigInt.fromI32(10).pow(u8(decimals)).toBigDecimal();
@@ -65,6 +66,8 @@ export function handleSync(event: Sync): void {
   updateTokenPrices(token1);
 
   updatePoolEmissions(pool);
+
+  updatePoolFees(pool);
   // Save all entities
   pool.save();
   token0.save();
