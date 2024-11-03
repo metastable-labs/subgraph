@@ -29,12 +29,20 @@ type Pool @entity {
   token0: Token!
   token1: Token!
   reserve0: BigDecimal!
+  reserve0USD: BigDecimal!
   reserve1: BigDecimal!
+  reserve1USD: BigDecimal!
   totalSupply: BigDecimal!
   isStable: Boolean!
   volumeToken0: BigDecimal!
+  volumeToken0USD: BigDecimal!
   volumeToken1: BigDecimal!
+  volumeToken1USD: BigDecimal!
   txCount: BigInt!
+
+    # USD metrics
+  tvlUSD: BigDecimal!
+  volumeUSD: BigDecimal!
 
   # Emissions and APR data
   emissionsPerSecond: BigDecimal!
@@ -45,6 +53,7 @@ type Pool @entity {
   feePercent: BigDecimal! # e.g., 0.3 for 0.3%
   claimableToken0: BigDecimal!
   claimableToken1: BigDecimal!
+  totalFeesUSD: BigDecimal!
 
   createdAtTimestamp: BigInt!
   createdAtBlockNumber: BigInt!

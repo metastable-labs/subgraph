@@ -8,6 +8,12 @@ function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
   return amount.toBigDecimal().div(scale);
 }
 
+function calculateTotalFeesUSD(pool: Pool, token0: Token, token1: Token): BigDecimal {
+  let fees0USD = pool.claimableToken0.times(token0.usdPrice);
+  let fees1USD = pool.claimableToken1.times(token1.usdPrice);
+  return fees0USD.plus(fees1USD);
+}
+
 export function updatePoolFees(pool: Pool): void {
   let poolContract = PoolContract.bind(Address.fromString(pool.id));
   let token0 = Token.load(pool.token0) as Token;
@@ -28,4 +34,6 @@ export function updatePoolFees(pool: Pool): void {
   } else {
     pool.claimableToken1 = ZERO_BD;
   }
+  // Calculate total fees in USD
+  pool.totalFeesUSD = calculateTotalFeesUSD(pool, token0, token1);
 }

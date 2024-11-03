@@ -26,6 +26,22 @@ function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
   return amount.toBigDecimal().div(scale);
 }
 
+export function updatePoolUSD(pool: Pool): void {
+  let token0 = Token.load(pool.token0) as Token;
+  let token1 = Token.load(pool.token1) as Token;
+
+  // Update TVL
+
+  pool.reserve0USD = pool.reserve0.times(token0.usdPrice);
+  pool.reserve1USD = pool.reserve1.times(token1.usdPrice);
+  pool.tvlUSD = pool.reserve0USD.plus(pool.reserve1USD);
+
+  // Update Volume
+  pool.volumeToken0USD = pool.volumeToken0.times(token0.usdPrice);
+  pool.volumeToken1USD = pool.volumeToken1.times(token1.usdPrice);
+  pool.volumeUSD = pool.volumeToken1USD.plus(pool.volumeToken1USD);
+}
+
 export function handleSync(event: Sync): void {
   let pool = Pool.load(event.address.toHexString());
   if (pool === null) return;
@@ -68,6 +84,7 @@ export function handleSync(event: Sync): void {
   updatePoolEmissions(pool);
 
   updatePoolFees(pool);
+  updatePoolUSD(pool);
   // Save all entities
   pool.save();
   token0.save();
@@ -199,7 +216,7 @@ export function handleMint(event: Mint): void {
   if (!totalSupplyResult.reverted) {
     pool.totalSupply = formatTokenAmount(totalSupplyResult.value, 18);
   }
-
+  updatePoolUSD(pool);
   // Save updates
   pool.save();
   token0.save();
