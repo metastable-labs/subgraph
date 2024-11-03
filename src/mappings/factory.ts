@@ -1,10 +1,11 @@
 import { BigInt, BigDecimal, Address } from '@graphprotocol/graph-ts';
-import { PoolCreated } from '../../generated/PoolFactory/PoolFactory';
+import { PoolCreated, PoolFactory } from '../../generated/PoolFactory/PoolFactory';
 import { Pool, Token, AerodromeFactory } from '../../generated/schema';
 import { Pool as PoolTemplate } from '../../generated/templates';
 import { ERC20 } from '../../generated/PoolFactory/ERC20';
 import { FACTORY_ADDRESS } from './constants';
 import { updateTokenPrices } from './pricing';
+import { formatFeePercent } from './utils';
 
 const ZERO_BD = BigDecimal.fromString('0');
 const ZERO_BI = BigInt.fromI32(0);
@@ -92,8 +93,18 @@ export function handlePoolCreated(event: PoolCreated): void {
 
   pool.claimableToken0 = ZERO_BD;
   pool.claimableToken1 = ZERO_BD;
-  pool.save();
 
+  // Get pool fee using the correct method
+  let feeResult = PoolFactory.bind(Address.fromString(FACTORY_ADDRESS)).try_getFee(
+    event.params.pool, // pool address
+    event.params.stable, // stable flag
+  );
+
+  if (!feeResult.reverted) {
+    pool.feePercent = formatFeePercent(feeResult.value);
+  } else {
+    pool.feePercent = ZERO_BD;
+  }
   // Create the tracked contract based on the template
   PoolTemplate.create(event.params.pool);
 }

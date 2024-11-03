@@ -36,12 +36,13 @@ type Pool @entity {
   volumeToken1: BigDecimal!
   txCount: BigInt!
 
-    # Emissions and APR data
+  # Emissions and APR data
   emissionsPerSecond: BigDecimal!
   emissionsToken: Bytes! # Address of emissions token
   yearlyEmissions: BigDecimal! # APR in percentage
 
-    # Fees earned data
+  # Fees earned data
+  feePercent: BigDecimal! # e.g., 0.3 for 0.3%
   claimableToken0: BigDecimal!
   claimableToken1: BigDecimal!
 
