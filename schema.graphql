@@ -14,7 +14,7 @@ type Token @entity {
     # Price fields
   ethPrice: BigDecimal!
   usdPrice: BigDecimal!
-  
+
   txCount: BigInt!
   totalLiquidity: BigDecimal!
   tokenDayData: [TokenDayData!]! @derivedFrom(field: "token")
@@ -35,6 +35,12 @@ type Pool @entity {
   volumeToken0: BigDecimal!
   volumeToken1: BigDecimal!
   txCount: BigInt!
+
+    # Emissions and APR data
+  emissionsPerSecond: BigDecimal!
+  emissionsToken: Bytes! # Address of emissions token
+  yearlyEmissions: BigDecimal! # APR in percentage
+  
   createdAtTimestamp: BigInt!
   createdAtBlockNumber: BigInt!
   poolHourData: [PoolHourData!]! @derivedFrom(field: "pool")

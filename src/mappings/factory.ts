@@ -1,4 +1,4 @@
-import { BigInt, BigDecimal } from '@graphprotocol/graph-ts';
+import { BigInt, BigDecimal, Address } from '@graphprotocol/graph-ts';
 import { PoolCreated } from '../../generated/PoolFactory/PoolFactory';
 import { Pool, Token, AerodromeFactory } from '../../generated/schema';
 import { Pool as PoolTemplate } from '../../generated/templates';
@@ -23,6 +23,7 @@ export function handlePoolCreated(event: PoolCreated): void {
     factory.txCount = ZERO_BI;
   }
   factory.poolCount = factory.poolCount + 1;
+
   factory.save();
 
   // Load or create tokens
@@ -84,6 +85,11 @@ export function handlePoolCreated(event: PoolCreated): void {
   pool.volumeToken1 = ZERO_BD;
   pool.reserve0 = ZERO_BD;
   pool.reserve1 = ZERO_BD;
+
+  pool.emissionsPerSecond = ZERO_BD;
+  pool.yearlyEmissions = ZERO_BD;
+  pool.emissionsToken = Address.fromString('0x940181a94A35A4569e4529A3CDfB74e38FD98631'); // AERO token
+
   pool.save();
 
   // Create the tracked contract based on the template
