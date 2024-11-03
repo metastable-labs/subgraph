@@ -11,6 +11,10 @@ type Token @entity {
   decimals: Int!
   totalSupply: BigInt!
   tradeVolume: BigDecimal!
+    # Price fields
+  ethPrice: BigDecimal!
+  usdPrice: BigDecimal!
+  
   txCount: BigInt!
   totalLiquidity: BigDecimal!
   tokenDayData: [TokenDayData!]! @derivedFrom(field: "token")

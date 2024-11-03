@@ -17,6 +17,7 @@ import {
   updateTokenDayData,
 } from './dayUpdates';
 import { ERC20 } from '../../generated/PoolFactory/ERC20';
+import { updateTokenPrices } from './pricing';
 
 function formatTokenAmount(amount: BigInt, decimals: i32): BigDecimal {
   let scale = BigInt.fromI32(10).pow(u8(decimals)).toBigDecimal();
@@ -50,6 +51,9 @@ export function handleSync(event: Sync): void {
   // Update token total liquidity
   token0.totalLiquidity = token0.totalLiquidity.plus(reserve0Delta);
   token1.totalLiquidity = token1.totalLiquidity.plus(reserve1Delta);
+
+  updateTokenPrices(token0);
+  updateTokenPrices(token1);
 
   // Ensure liquidity never goes negative
   if (token0.totalLiquidity.lt(ZERO_BD)) {

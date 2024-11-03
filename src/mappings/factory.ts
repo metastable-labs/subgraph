@@ -4,6 +4,7 @@ import { Pool, Token, AerodromeFactory } from '../../generated/schema';
 import { Pool as PoolTemplate } from '../../generated/templates';
 import { ERC20 } from '../../generated/PoolFactory/ERC20';
 import { FACTORY_ADDRESS } from './constants';
+import { updateTokenPrices } from './pricing';
 
 const ZERO_BD = BigDecimal.fromString('0');
 const ZERO_BI = BigInt.fromI32(0);
@@ -43,6 +44,9 @@ export function handlePoolCreated(event: PoolCreated): void {
     token0.tradeVolume = ZERO_BD;
     token0.txCount = ZERO_BI;
     token0.totalLiquidity = ZERO_BD;
+    token0.ethPrice = ZERO_BD;
+    token0.usdPrice = ZERO_BD;
+    updateTokenPrices(token0);
     token0.save();
   }
 
@@ -61,6 +65,9 @@ export function handlePoolCreated(event: PoolCreated): void {
     token1.tradeVolume = ZERO_BD;
     token1.txCount = ZERO_BI;
     token1.totalLiquidity = ZERO_BD;
+    token1.ethPrice = ZERO_BD;
+    token1.usdPrice = ZERO_BD;
+    updateTokenPrices(token1);
     token1.save();
   }
 
