@@ -1,4 +1,4 @@
-import { BigInt, BigDecimal } from '@graphprotocol/graph-ts';
+import { BigInt, BigDecimal, log } from '@graphprotocol/graph-ts';
 import { Swap, Mint, Burn, Sync } from '../../generated/templates/Pool/Pool';
 import {
   Pool,
@@ -44,48 +44,41 @@ export function updatePoolUSD(pool: Pool): void {
 
 export function handleSync(event: Sync): void {
   let pool = Pool.load(event.address.toHexString());
-  if (pool === null) return;
+  if (pool === null) {
+    log.warning('Pool not found for sync: {}', [event.address.toHexString()]);
+    return;
+  }
 
   let token0 = Token.load(pool.token0);
   let token1 = Token.load(pool.token1);
-  if (token0 === null || token1 === null) return;
-
-  // Get current reserves
-  let oldReserve0 = pool.reserve0;
-  let oldReserve1 = pool.reserve1;
+  if (token0 === null || token1 === null) {
+    log.warning('Tokens not found for sync: {}/{}', [pool.token0, pool.token1]);
+    return;
+  }
 
   // Update to new reserves with proper decimal formatting
   let newReserve0 = formatTokenAmount(event.params.reserve0, token0.decimals);
   let newReserve1 = formatTokenAmount(event.params.reserve1, token1.decimals);
 
-  // Calculate reserve changes
-  let reserve0Delta = newReserve0.minus(oldReserve0);
-  let reserve1Delta = newReserve1.minus(oldReserve1);
+  log.info('Sync for pool {} - reserves: {}/{}', [
+    pool.id,
+    newReserve0.toString(),
+    newReserve1.toString(),
+  ]);
 
   // Update pool reserves
   pool.reserve0 = newReserve0;
   pool.reserve1 = newReserve1;
 
-  // Update token total liquidity
-  token0.totalLiquidity = token0.totalLiquidity.plus(reserve0Delta);
-  token1.totalLiquidity = token1.totalLiquidity.plus(reserve1Delta);
-
-  // Ensure liquidity never goes negative
-  if (token0.totalLiquidity.lt(ZERO_BD)) {
-    token0.totalLiquidity = ZERO_BD;
-  }
-  if (token1.totalLiquidity.lt(ZERO_BD)) {
-    token1.totalLiquidity = ZERO_BD;
-  }
-
+  // Update prices
   updateTokenPrices(token0);
   updateTokenPrices(token1);
 
-  updatePoolEmissions(pool);
-
-  updatePoolFees(pool);
+  // Update USD values
   updatePoolUSD(pool);
-  // Save all entities
+
+  log.info('Updated pool USD values - TVL: {}', [pool.tvlUSD.toString()]);
+
   pool.save();
   token0.save();
   token1.save();
@@ -125,6 +118,11 @@ export function handleSwap(event: Swap): void {
   pool.volumeToken0 = pool.volumeToken0.plus(amount0Total);
   pool.volumeToken1 = pool.volumeToken1.plus(amount1Total);
   pool.txCount = pool.txCount.plus(ONE_BI);
+  updatePoolUSD(pool);
+  updateTokenPrices(token0);
+  updateTokenPrices(token1);
+
+  updatePoolEmissions(pool);
 
   // Note: Don't update reserves here as they will be updated by the Sync event
 

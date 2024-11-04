@@ -8,7 +8,7 @@ dataSources:
     source:
       address: "0x420DD381b31aEf6683db6B902084cB0FFECe40Da"
       abi: PoolFactory
-      startBlock: 3204690
+      startBlock: 3200559
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
